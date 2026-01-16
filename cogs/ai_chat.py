@@ -8,7 +8,7 @@ class AIChat(commands.Cog):
     def __init__(self, bot, ai_client):
         self.bot = bot
         self.ai = ai_client
-        self.data_path = "data/register_channel.json"
+        self.data_path = "data/ai_register_channel.json"
 
         if not os.path.exists("data"):
             os.makedirs("data")
@@ -39,7 +39,7 @@ class AIChat(commands.Cog):
         if message.channel.id not in registered: return
         
         async with message.channel.typing():
-            response = self.ai.get_response(f"{message.author} 說 {message.content}")
+            response = self.ai.get_response(f"你現在在一個 Discord 裡面，這個伺服器的開發者 @gdnb 將你使用 API 套用進這個 Discord 機器人上。接下來有一位使用者說話，請給予回覆 : 使用者 {message.author} 說 {message.content}")
             
             if response and response.strip():
                 if len(response) > 2000:
@@ -48,21 +48,7 @@ class AIChat(commands.Cog):
             else:
                 await message.reply("( 錯誤 : 機器人未給予回覆，可能是 Gemini 那邊的問題，請在嘗試一次 )")
 
-    @commands.command(name = "ai_chat_register")
-    @commands.has_permissions(administrator = True)
-    async def ai_chat_register(self, ctx):
-        target_channel_id = ctx.channel.id
-        registered = self.get_registered_channels()
-
-        if target_channel_id in registered:
-            registered.remove(target_channel_id)
-            await ctx.reply(":mute: 這個頻道不可以跟 AI 聊天 :upside_down:")
-
-        else:
-            registered.append(target_channel_id)
-            await ctx.reply(":loud_sound: 這個頻道現在可以跟 AI 聊天了")
-
-        self.save_channels(registered)
+    
 
 
 # 這個函數是讓 main.py 載入這個模組的關鍵

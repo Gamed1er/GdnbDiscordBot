@@ -29,20 +29,21 @@ class GdnbBot(commands.Bot):
 
         # 修正 JSON 讀取
         try:
-            with open("data/register_channel.json", "r", encoding="utf-8") as f:
+            with open("data/announcement_register_channel.json", "r", encoding="utf-8") as f:
                 registered = json.load(f)
             
-            for channel_id in registered:
-                channel = self.get_channel(channel_id)
-                # 如果 get_channel 拿不到 (快取還沒好)，就用 fetch_channel 硬抓
-                if channel is None:
-                    try:
-                        channel = await self.fetch_channel(channel_id)
-                    except:
-                        continue
-                
-                if channel:
-                    await channel.send(":green_circle: 【我不是遊戲亡】已上線")
+            for guild in registered.values():
+                for channel_id in guild:
+                    channel = self.get_channel(channel_id)
+                    # 如果 get_channel 拿不到 (快取還沒好)，就用 fetch_channel 硬抓
+                    if channel is None:
+                        try:
+                            channel = await self.fetch_channel(channel_id)
+                        except:
+                            continue
+                    
+                    if channel:
+                        await channel.send(":green_circle: 【我不是遊戲亡】已上線")
         except Exception as e:
             print(f"上線通知發送失敗: {e}")
 
@@ -50,13 +51,14 @@ class GdnbBot(commands.Bot):
         print("機器人正在關閉，發送下線通知...")
         try:
             # 修正 JSON 讀取
-            with open("data/register_channel.json", "r", encoding="utf-8") as f:
+            with open("data/announcement_register_channel.json", "r", encoding="utf-8") as f:
                 registered = json.load(f)
             
-            for channel_id in registered:
-                channel = self.get_channel(channel_id)
-                if channel:
-                    await channel.send(":red_circle: 【我不是遊戲亡】已下線")
+            for guild in registered.values():
+                for channel_id in guild:
+                    channel = self.get_channel(channel_id)
+                    if channel:
+                        await channel.send(":red_circle: 【我不是遊戲亡】已下線")
         except Exception as e:
             print(f"下線通知發送失敗: {e}")
             
