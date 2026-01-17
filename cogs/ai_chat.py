@@ -3,26 +3,13 @@ import json
 import os
 from discord.ext import commands
 from core.gemini_client import GeminiAI
+from core.data_base_manager import DatabaseManager
 
 class AIChat(commands.Cog):
     def __init__(self, bot, ai_client):
         self.bot = bot
         self.ai = ai_client
         self.data_path = "data/ai_register_channel.json"
-
-        if not os.path.exists("data"):
-            os.makedirs("data")
-        if not os.path.exists(self.data_path):
-            with open(self.data_path, "w") as f:
-                json.dump([], f) # 初始化為空列表
-
-    def get_registered_channels(self):
-        with open(self.data_path, "r") as f:
-            return json.load(f)
-
-    def save_channels(self, channels):
-        with open(self.data_path, "w") as f:
-            json.dump(channels, f, indent=4)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -35,7 +22,7 @@ class AIChat(commands.Cog):
         if message.content.startswith("~"): return
 
         # 忽略未登記的頻道
-        registered = self.get_registered_channels()
+        registered = DatabaseManager.load_json(self.data_path, [])
         if message.channel.id not in registered: return
         
         async with message.channel.typing():
@@ -47,8 +34,6 @@ class AIChat(commands.Cog):
                 await message.reply(response)
             else:
                 await message.reply("( 錯誤 : 機器人未給予回覆，可能是 Gemini 那邊的問題，請在嘗試一次 )")
-
-    
 
 
 # 這個函數是讓 main.py 載入這個模組的關鍵
