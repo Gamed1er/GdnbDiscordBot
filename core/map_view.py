@@ -15,11 +15,13 @@ class MapView(discord.ui.View):
         stats_path = self.get_stats_path(interaction)
 
         # 1. 讀取統計資料
-        data = DatabaseManager.load_json(stats_path)
+        data = DatabaseManager.load_json(stats_path, MapView.BLANK_STATISTIC)
         current_map_version = data.get("map_version", 1)
         user_id = interaction.user.id
         
         # 2. 尋找該用戶是否在紀錄中
+        if "users" not in data:
+            data["users"] = []
         user_record = next((u for u in data["users"] if u["id"] == user_id), None)
 
         # 3. 檢查下載資格

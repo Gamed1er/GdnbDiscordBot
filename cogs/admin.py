@@ -9,6 +9,7 @@ class Admin(commands.Cog):
     @commands.command(name="ext", description = "load/unload/reload a extension")
     @commands.is_owner()
     async def extension_operation(self, ctx, operation: str, extension: str):
+        """load/unload/reload a extension"""
         ext_path = f"cogs.{extension}"
         try:
             if operation == "load":

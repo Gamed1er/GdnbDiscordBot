@@ -15,6 +15,8 @@ class DatabaseManager:
         讀取 JSON，如果檔案不存在或出錯，回傳預設值 (預設為空字典)
         """
         if not os.path.exists(path):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(default_factory)
             return default_factory()
         
         try:
