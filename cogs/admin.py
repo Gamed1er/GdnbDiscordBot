@@ -36,7 +36,7 @@ class Admin(commands.Cog):
     @commands.has_permissions(administrator = True)
     async def ai_channel_register(self, ctx):
         target_channel_id = ctx.channel.id
-        registered = DatabaseManager.load_json("data/ai_register_channel.json")
+        registered = DatabaseManager.load_json("data/ai_register_channel.json", [])
 
         if target_channel_id in registered:
             registered.remove(target_channel_id)
