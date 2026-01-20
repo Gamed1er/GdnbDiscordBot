@@ -5,6 +5,7 @@ import asyncio
 from discord.ext import commands
 from discord import app_commands
 from dotenv import load_dotenv
+from core.map_view import MapView
 
 load_dotenv() # 載入 .env 檔案中的變數
 
@@ -15,6 +16,8 @@ class GdnbBot(commands.Bot):
         super().__init__(command_prefix="$", intents=intents)
 
     async def setup_hook(self):
+        self.add_view(MapView())
+
         # 自動載入 cogs 資料夾下的所有 .py 檔
         for filename in os.listdir('./cogs'):
             if filename.endswith('.py') and filename != "prefab.py":

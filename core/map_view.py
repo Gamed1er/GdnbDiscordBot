@@ -3,18 +3,19 @@ import os
 from core.data_base_manager import DatabaseManager
 
 class MapView(discord.ui.View):
-    def __init__(self, map_name):
+    def __init__(self):
         super().__init__(timeout=None) # 永久有效的按鈕
-        self.map_name = map_name
-        self.stats_path = f"data/projects/{map_name}/statistics.json"
 
     BLANK_STATISTIC = {"map_version": 1,"downloads": 0,"total_rating_sum": 0,"rating_count": 0, "users":[]}
     BLANK_USER = {"id" : -1, "download_version" : -1, "rate_points" : -1}
 
-    @discord.ui.button(label="📥 下載地圖", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="📥 下載地圖", style=discord.ButtonStyle.green, custom_id="map_download")
     async def download_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        map_name = self.get_map_name(interaction)
+        stats_path = self.get_stats_path(interaction)
+
         # 1. 讀取統計資料
-        data = DatabaseManager.load_json(self.stats_path)
+        data = DatabaseManager.load_json(stats_path)
         current_map_version = data.get("map_version", 1)
         user_id = interaction.user.id
         
@@ -39,7 +40,7 @@ class MapView(discord.ui.View):
         # 更新用戶下載版本與總下載量
         user_record["download_version"] = current_map_version
         data["downloads"] += 1
-        DatabaseManager.save_json(self.stats_path, data)
+        DatabaseManager.save_json(stats_path, data)
 
         # 5. 發送連結或檔案
         url = data.get("download_url", "未設定連結")
@@ -48,34 +49,68 @@ class MapView(discord.ui.View):
             ephemeral=True
         )
         files = []
-        folder = f"data/projects/{self.map_name}"
+        folder = f"data/projects/{map_name}"
         if os.path.exists(folder):
             for filename in os.listdir(folder):
                 if filename.endswith(".zip"):
                     files.append(discord.File(os.path.join(folder, filename)))
-        await interaction.user.send(f"這是地圖 **{self.map_name}** 的下載檔案：", files=files)
+        await interaction.user.send(f"這是地圖 **{map_name}** 的下載檔案：", files=files)
+        await interaction.message.edit(embed = self.renew_embed(interaction, data))
 
-    @discord.ui.button(label="⭐ 評分地圖", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="⭐ 評分地圖", style=discord.ButtonStyle.blurple, custom_id="map_rate")
     async def rate_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        map_name = self.get_map_name(interaction)
+        stats_path = self.get_stats_path(interaction)
         # 呼叫 Modal 並傳入 self (View 本身)
         await interaction.response.send_modal(RatingModal(self))
 
-class RatingModal(discord.ui.Modal, title='地圖評分系統'):
-    # 定義輸入框
+    def get_map_name(self, interaction : discord.Interaction):
+        footer = interaction.message.embeds[0].footer.text
+        if not footer.startswith("map_id:"):
+            raise ValueError("Embed 缺少 map_id")
+        return footer.replace("map_id:", "")
+    
+    def get_stats_path(self, interaction: discord.Interaction):
+        return f"data/projects/{self.get_map_name(interaction)}/statistics.json"
+    
+    def renew_embed(self, interaction : discord.Interaction, data : dict):
+        avg_score = round(data["total_rating_sum"] / data["rating_count"], 1)
+        embed = interaction.message.embeds[0]
+        
+        embed.set_field_at(
+            index=len(embed.fields) - 1, 
+            name="📊 統計資訊", 
+            value=f"📥 下載次數：`{data['downloads']}`\n⭐ 平均評分：`{avg_score}` ({data['rating_count']} 人評價)",
+            inline=False
+        )
+
+        return embed
+
+class RatingModal(discord.ui.Modal, title='地圖評分與評價'):
+    # 分數輸入框 (短)
     rating_input = discord.ui.TextInput(
         label='請給予這張地圖評分 (1-5)',
-        placeholder='請輸入 1 到 5 的整數...',
+        placeholder='請輸入 1 到 5...',
         min_length=1,
         max_length=1,
         required=True
     )
+    
+    # 評價內容輸入框 (長)
+    comment_input = discord.ui.TextInput(
+        label='給作者的建議或心得 (選填, 只有遊戲亡本人會看到)',
+        style=discord.TextStyle.long, # 設定為多行輸入
+        placeholder='這張地圖很有趣！希望下次可以增加...',
+        required=False, # 設定為非必填
+        max_length=500 # 限制字數防止 JSON 過大
+    )
 
-    def __init__(self, map_view):
+    def __init__(self, map_view: MapView):
         super().__init__()
-        self.map_view = map_view # 存取原本的 View 以便更新 Embed
+        self.map_view = map_view
 
     async def on_submit(self, interaction: discord.Interaction):
-        # 1. 驗證輸入內容
+        # 1. 驗證分數內容
         try:
             score = int(self.rating_input.value)
             if not (1 <= score <= 5):
@@ -84,39 +119,42 @@ class RatingModal(discord.ui.Modal, title='地圖評分系統'):
             await interaction.response.send_message("❌ 評分失敗：請輸入 1 到 5 之間的數字。", ephemeral=True)
             return
 
-        # 2. 讀取與更新資料 (使用 DatabaseManager)
-        from core.data_base_manager import DatabaseManager
-        data = DatabaseManager.load_json(self.map_view.stats_path)
+        # 2. 獲取評價內容
+        user_comment = self.comment_input.value if self.comment_input.value else ""
+
+        # 3. 讀取與更新資料
+        stats_path = self.map_view.get_stats_path(interaction)
+        data = DatabaseManager.load_json(stats_path)
         user_id = interaction.user.id
 
-        # 3. 尋找用戶紀錄 (確保已下載過才能評分，或依你的需求調整)
+        # 尋找用戶紀錄
         user_record = next((u for u in data["users"] if u["id"] == user_id), None)
         
         if not user_record:
             await interaction.response.send_message("⚠️ 您必須先點擊「下載」後才能進行評分喔！", ephemeral=True)
             return
 
-        # 4. 更新數據
+        # 4. 更新數據 (處理分數與評論)
+        if user_record.get("rate_points", -1) != -1:
+            # 扣除舊的分數
+            data["total_rating_sum"] -= user_record["rate_points"]
+        else:
+            # 第一次評分才增加人數
+            data["rating_count"] += 1
+            
+        # 更新該用戶的紀錄 (如果之前有評論，新的會直接覆蓋舊的)
         user_record["rate_points"] = score
+        user_record["comment"] = user_comment # 新增欄位儲存評價
+        user_record["last_rated_at"] = str(discord.utils.utcnow()) # 紀錄評價時間
+
         data["total_rating_sum"] += score
-        data["rating_count"] += 1
-        DatabaseManager.save_json(self.map_view.stats_path, data)
+        DatabaseManager.save_json(stats_path, data)
 
-        # 5. 更新原本的 Embed
-        # 計算新平均分
-        avg_score = round(data["total_rating_sum"] / data["rating_count"], 1)
+        # 5. 更新原本的 Embed (這部分代碼與之前相同)
+        await interaction.message.edit(embed = self.map_view.renew_embed(interaction, data))
         
-        # 取得原本的 Embed 並修改特定欄位 (假設評分欄位是最後一個)
-        embed = interaction.message.embeds[0]
-        # 重新設定統計資訊欄位 (根據你之前的格式)
-        # 假設你的統計欄位是在最後一個 field
-        embed.set_field_at(
-            index=len(embed.fields) - 1, 
-            name="📊 統計資訊", 
-            value=f"📥 下載次數：`{data['downloads']}`\n⭐ 平均評分：`{avg_score}` ({data['rating_count']} 人評價)",
-            inline=False
-        )
-
-        # 更新原始訊息的 Embed
-        await interaction.message.edit(embed=embed)
-        await interaction.response.send_message(f"✅ 感謝您的評價！您給予了 {score} 顆星。", ephemeral=True)
+        msg = f"✅ 感謝您的評價！您給予了 {score} 顆星。"
+        if user_comment:
+            msg += f"\n您的評價內容：{user_comment}"
+            
+        await interaction.response.send_message(msg, ephemeral=True)
