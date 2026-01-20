@@ -70,7 +70,7 @@ class LevelSystem(commands.Cog):
         
         # 8. 儲存
         level_data[user_id] = user
-        DatabaseManager.save_json(self.data_dir + message.guild.id + ".json", level_data)
+        DatabaseManager.save_json(f"{self.data_dir}{message.guild.id}.json", level_data)
 
     @commands.command(name="xp")
     async def asking_xp(self, ctx, target: discord.Member = None):

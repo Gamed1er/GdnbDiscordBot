@@ -10,18 +10,18 @@ class DatabaseManager:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
     @staticmethod
-    def load_json(path, default_factory=dict):
+    def load_json(path, default_factory={}):
         """
         讀取 JSON，如果檔案不存在或出錯，回傳預設值 (預設為空字典)
         """
         if not os.path.exists(path):
             with open(path, "w", encoding="utf-8") as f:
-                f.write(default_factory)
-            return default_factory()
+                json.dump(default_factory, f, indent=4, ensure_ascii=False)
+            return default_factory
         
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, ValueError):
             # 檔案損毀時的處理
-            return default_factory()
+            return default_factory
