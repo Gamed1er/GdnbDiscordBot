@@ -76,17 +76,32 @@ class MapView(discord.ui.View):
         return f"data/projects/{self.get_map_name(interaction)}/statistics.json"
     
     def renew_embed(self, interaction : discord.Interaction, data : dict):
-        avg_score = round(data["total_rating_sum"] / data["rating_count"], 1)
-        embed = interaction.message.embeds[0]
+        # 1. 取得舊的 Embed
+        old_embed = interaction.message.embeds[0]
+        # 2. 複製它，這樣可以保留圖片、顏色、標題等所有設定
+        new_embed = old_embed.copy()
         
-        embed.set_field_at(
-            index=len(embed.fields) - 1, 
-            name="📊 統計資訊", 
-            value=f"📥 下載次數：`{data['downloads']}`\n⭐ 平均評分：`{avg_score}` ({data['rating_count']} 人評價)",
-            inline=False
-        )
+        # 3. 計算評分
+        # 防呆：如果有人評分但 rating_count 為 0 (雖然理論上不會)，避免除以 0
+        count = data.get("rating_count", 0)
+        total = data.get("total_rating_sum", 0)
+        avg_score = round(total / count, 1) if count > 0 else 0
 
-        return embed
+        # 4. 更新特定欄位
+        # 我們不再用 len(embed.fields)-1，改用循環尋找，這樣更安全
+        for i, field in enumerate(new_embed.fields):
+            if "統計資訊" in field.name:
+                new_embed.set_field_at(
+                    index=i, 
+                    name="📊 統計資訊", 
+                    value=f"📥 下載次數：`{data['downloads']}`\n⭐ 平均評分：`{avg_score}` ({count} 人評價)",
+                    inline=False
+                )
+                break
+
+        # 關鍵：.copy() 已經幫你保留了 thumbnail 的 url="attachment://thumbnail.png"
+        # 且不需要再重新發送 file，Discord 會自動關聯原本訊息中的附件。
+        return new_embed
 
 class RatingModal(discord.ui.Modal, title='地圖評分與評價'):
     # 分數輸入框 (短)
