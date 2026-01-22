@@ -56,7 +56,15 @@ class MapView(discord.ui.View):
             for filename in os.listdir(folder):
                 if filename.endswith(".zip"):
                     files.append(discord.File(os.path.join(folder, filename)))
-        await interaction.user.send(f"這是地圖 **{map_name}** 的下載檔案：", files=files)
+
+        MAP_PROMPT = """
+        遊玩地圖時有幾點通知
+        1.如果是單人遊玩，不需要安裝資源包，地圖裡面會附帶。
+        2.如果是多人遊玩，建議使用原版伺服器或著區域網連線，並且需要安裝資源包
+        3.每隻 Discord 帳號只能下載一次地圖，但是如果地圖有版本更新就可以重新下載最新版本
+        4.玩玩地圖後記得幫我評分喔 (<ゝω・) ☆"
+        """
+        await interaction.user.send(f"這是地圖 **{map_name}** 的下載檔案。\n{MAP_PROMPT}", files=files)
         await interaction.message.edit(embed = self.renew_embed(interaction, data))
 
     @discord.ui.button(label="⭐ 評分地圖", style=discord.ButtonStyle.blurple, custom_id="map_rate")

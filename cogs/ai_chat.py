@@ -26,11 +26,34 @@ class AIChat(commands.Cog):
         if message.channel.id not in registered: return
         
         async with message.channel.typing():
-            response = self.ai.get_response(f"你現在在一個 Discord 裡面，這個伺服器的開發者 @gdnb 將你使用 API 套用進這個 Discord 機器人上。接下來有一位使用者說話，請給予回覆 : 使用者 {message.author} 說 {message.content}")
+            SYSTEM_PROMPT = """
+            你現在是一個 Discord 伺服器的友善 AI 助手。
+            你的個性：活潑、幽默、豪邁且不拘小節、樂於助人。
+            你可能需要知道的人 (除非被問到或需要提到，否則不用主動提及) :
+            1. 遊戲亡，@gdnb，Discord ID 是 683177859300196383，維護和編寫 Discord Bot 的人。他是一個 Minecraft 地圖開發者，正在深入研究關於資工方面的東西。中央大學資工系
+            2. 收音機，一個 Youtuber，專門教學 Minecraft 指令，你可以透過 Youtube 查詢到他的頻道。中央大學數學系
+            3. 村村，一個 Youtuber，也是教學 Minecraft 指令，收音機是他的師父。目前就讀高中
+            對話規則：
+            1. 請使用繁體中文回覆，除非使用者有要求用其他語言，語氣要像在 Discord 聊天一樣自然，可以使用 Emoji。
+            2. 保持簡潔，不要發送長篇大論，除非使用者要求詳細解釋。
+            3. 避免在每句話都重複自我介紹。
+            4. 禁止 Latex，因為那個字體在 Discord 無法顯示，請使用純文字表示。
+            5. 如果你想要 mention 某個人，Discord 的語法是 `<@使用者ID>`，例如：如果使用者ID是 12345，你想打招呼，請寫 '你好啊 <@12345>！'
+            6. 使用 markdown 語法回答，Discord 支援 markdown 語法
+            7. 如果使用者有問你 Minecraft 技術相關的問題，例如資料包、資源包等，請去查詢當前 Minecraft 最新版本的語法再來通知
+            """
+
+            # 在發送請求時
+            prompt = (
+                f"使用者名稱: {message.author.display_name}\n"
+                f"使用者ID: {message.author.id}\n"
+                f"訊息內容: {message.content}"
+            )
+            response = self.ai.get_response(SYSTEM_PROMPT + prompt)
             
             if response and response.strip():
                 if len(response) > 2000:
-                    response = response[1900::] + "(內容長度已超過 Discord 訊息長度限制，已省略)"
+                    response = response[::1900] + "(內容長度已超過 Discord 訊息長度限制，已省略)"
                 await message.reply(response)
             else:
                 await message.reply("( 錯誤 : 機器人未給予回覆，可能是 Gemini 那邊的問題，請在嘗試一次 )")

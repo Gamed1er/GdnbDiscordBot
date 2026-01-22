@@ -49,18 +49,16 @@ class LevelSystem(commands.Cog):
             with open("data/announcement_register_channel.json", "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            for guild in data.values():
-                for channel_id in guild:
-                    channel = self.bot.get_channel(channel_id)
-                    if channel is None:
-                        try:
-                            channel = await self.fetch_channel(channel_id)
-                        except:
-                            continue
-                    
-                    if channel:
-                        await channel.send(f"恭喜 {message.author.mention} 已提升至等級 {user['level'] + d_level}")
-
+            for channel_id in data[str(message.guild.id)]:
+                channel = self.bot.get_channel(channel_id)
+                if channel is None:
+                    try:
+                        channel = await self.fetch_channel(channel_id)
+                    except:
+                        continue
+                
+                if channel:
+                    await channel.send(f"恭喜 {message.author.mention} 已提升至等級 {user['level'] + d_level}")
 
         # 7. 更新資料
         user["xp"] = round(user["xp"] + xp_gain, 2)

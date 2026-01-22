@@ -2,3 +2,4 @@
 data/
 .pyc
 run_docker.txt
+.sh
