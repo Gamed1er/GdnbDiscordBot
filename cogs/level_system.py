@@ -45,7 +45,7 @@ class LevelSystem(commands.Cog):
 
         # 6. 檢查等級 (可選：要在這裡檢查是否該給予身分組)
         d_level = LevelManager.check_level_up(user["xp"], xp_gain)
-        if d_level > 0:
+        if d_level > 0 and user["announcement"]:
             with open("data/announcement_register_channel.json", "r", encoding="utf-8") as f:
                 data = json.load(f)
 
@@ -70,8 +70,31 @@ class LevelSystem(commands.Cog):
         level_data[user_id] = user
         DatabaseManager.save_json(f"{self.data_dir}{message.guild.id}.json", level_data)
 
+    @commands.command(name="xp_announcement")
+    async def xp_announcement(self, ctx):
+        """
+        使否通知使用者升級訊息
+        使用方法 : $xp_announcement
+        """
+        level_data = DatabaseManager.load_json(self.data_dir + str(ctx.guild.id) + ".json")
+        user_data = level_data.get(str(ctx.author.id), LevelManager.BLANK_LEVEL_DATA)
+        user_data["announcement"] = not user_data["announcement"]
+
+        if(user_data["announcement"]):
+            await ctx.reply(":white_check_mark: 現在會傳送你的升級訊息。", )
+        else:
+            await ctx.reply(":x: 現在不會傳送你的升級訊息")
+
+        level_data[ctx.author.id] = user_data
+        DatabaseManager.save_json(f"{self.data_dir}{ctx.guild.id}.json", level_data)
+
     @commands.command(name="xp")
     async def asking_xp(self, ctx, target: discord.Member = None):
+        """
+        得知使用者的 xp 等級
+        使用方法 : $xp <member>
+        <member> 默認自己
+        """
         target = target or ctx.author 
         
         level_data = DatabaseManager.load_json(self.data_dir + str(ctx.guild.id) + ".json")

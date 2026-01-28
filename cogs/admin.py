@@ -6,7 +6,7 @@ class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="ext", description = "load/unload/reload a extension")
+    @commands.command(name="ext")
     @commands.is_owner()
     async def extension_operation(self, ctx, operation: str, extension: str):
         """load/unload/reload a extension"""

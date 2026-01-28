@@ -1,7 +1,7 @@
 import math
 
 class LevelManager:
-    BLANK_LEVEL_DATA = {"xp": 0, "last_talk_time": 0, "last_word": "", "level": 0}
+    BLANK_LEVEL_DATA = {"xp": 0, "last_talk_time": 0, "last_word": "", "level": 0, "announcement":True}
 
     @staticmethod
     def level_to_xp(x):
