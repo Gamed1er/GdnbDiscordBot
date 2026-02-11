@@ -1,5 +1,7 @@
 import discord
 from discord.ext import commands
+import logging
+logger = logging.getLogger(__name__)
 
 class BanScammer(commands.Cog):
     def __init__(self, bot):
@@ -22,16 +24,16 @@ class BanScammer(commands.Cog):
                 
                 # 發送日誌到後台 (可選)
                 log_msg = f"🛡️ **安全警報**：已自動 Ban 掉用戶 `{message.author}` (ID: {message.author.id})\n**原因**：在陷阱頻道發言。"
-                print(log_msg) # 同時顯示在樹莓派日誌
+                logger.waring(log_msg) # 同時顯示在樹莓派日誌
                 
                 # 如果你想通知其他管理員，可以在這裡指定一個管理頻道發送
                 # admin_channel = self.bot.get_channel(管理頻道ID)
                 # await admin_channel.send(log_msg)
 
             except discord.Forbidden:
-                print(f"❌ 權限不足，無法 Ban 掉 {message.author}。")
+                logger.error(f"❌ 權限不足，無法 Ban 掉 {message.author}。")
             except discord.HTTPException as e:
-                print(f"❌ 發生錯誤：{e}")
+                logger.error(f"❌ 發生錯誤：{e}")
 
 async def setup(bot):
     await bot.add_cog(BanScammer(bot))

@@ -1,13 +1,61 @@
 import discord
 import os
 import json
-import asyncio
 from discord.ext import commands
 from discord import app_commands
 from dotenv import load_dotenv
 from core.map_view import MapView
-
+import logging
+from logging.handlers import TimedRotatingFileHandler
+from datetime import datetime
+import logging
 load_dotenv() # 載入 .env 檔案中的變數
+
+# 設定全域 Logging
+def setup_logging():
+    # 1. 建立 .log 資料夾
+    log_dir = "/log"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    # 2. 定義基礎 Logger
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # 3. 設定 TimedRotatingFileHandler
+    # filename: 初始檔案路徑
+    # when='midnight': 每天午夜自動切割
+    # interval=1: 每 1 天執行一次
+    # backupCount=30: 保留最近 30 天的 log，舊的自動刪除
+    log_filename = os.path.join(log_dir, f"{datetime.now().strftime('%y%m%d')}.log")
+    
+    handler = TimedRotatingFileHandler(
+        filename=log_filename,
+        when="midnight",
+        interval=1,
+        backupCount=30,
+        encoding="utf-8"
+    )
+
+    # 4. 自定義滾動檔案的檔名格式 (讓它符合 260221.log 這種格式)
+    # 預設行為會把日期加在副檔名後面，我們透過以下函數修正它
+    handler.suffix = "%y%m%d.log" 
+    
+    # 5. 設定格式與輸出
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s', datefmt='%H:%M:%S')
+    handler.setFormatter(formatter)
+    
+    # 同時在螢幕上顯示
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+
+    logger.addHandler(handler)
+    logger.addHandler(console_handler)
+
+# 執行初始化
+setup_logging()
+logger = logging.getLogger(__name__)
+logger.info("日誌系統啟動成功，每天將自動建立新檔案。")
 
 class GdnbBot(commands.Bot):
     def __init__(self):
@@ -22,13 +70,13 @@ class GdnbBot(commands.Bot):
         for filename in os.listdir('./cogs'):
             if filename.endswith('.py') and filename != "prefab.py":
                 await self.load_extension(f'cogs.{filename[:-3]}')
-                print(f'已載入模組: {filename}')
+                logger.info(f'已載入模組: {filename}')
 
     async def on_ready(self):
         # 原有的同步邏輯
         self.tree.clear_commands(guild=None)
         await self.tree.sync() 
-        print(f'已同步斜線指令。機器人 {self.user} 已上線！')
+        logger.info(f'已同步斜線指令。機器人 {self.user} 已上線！')
 
         # 修正 JSON 讀取
         try:
@@ -48,10 +96,10 @@ class GdnbBot(commands.Bot):
                     if channel:
                         await channel.send(":green_circle: 【我不是遊戲亡】已上線")
         except Exception as e:
-            print(f"上線通知發送失敗: {e}")
+            logger.error(f"上線通知發送失敗: {e}")
 
     async def close(self):
-        print("機器人正在關閉，發送下線通知...")
+        logger.info("機器人正在關閉，發送下線通知...")
         try:
             # 修正 JSON 讀取
             with open("data/announcement_register_channel.json", "r", encoding="utf-8") as f:
@@ -63,7 +111,7 @@ class GdnbBot(commands.Bot):
                     if channel:
                         await channel.send(":red_circle: 【我不是遊戲亡】已下線")
         except Exception as e:
-            print(f"下線通知發送失敗: {e}")
+            logger.info(f"下線通知發送失敗: {e}")
             
         await super().close()
 

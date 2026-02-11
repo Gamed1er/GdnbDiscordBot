@@ -9,3 +9,4 @@ services:
       - .env
     volumes:
       - ./data:/app/data  # 關鍵：將本地的 data 資料夾同步到容器，確保 JSON 不會消失
+      - ./logs
