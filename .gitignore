@@ -4,3 +4,10 @@ resources/
 .pyc
 run_docker.txt
 .sh
+.log
+logs/
+__pycache__/
+git_update.sh
+run_bot.sh
+Dockerfile
+docker-compose.yml
