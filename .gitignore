@@ -11,3 +11,4 @@ git_update.sh
 run_bot.sh
 Dockerfile
 docker-compose.yml
+*.pyc

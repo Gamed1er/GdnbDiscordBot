@@ -1,14 +1,12 @@
 import time
 from google import genai
 from google.genai import errors # type: ignore
-import logging
-logger = logging.getLogger(__name__)
 import random
 
 class GeminiAI:
     def __init__(self, api_keys):
         self.api_keys = api_keys
-        logger.info(f"載入了 {len(self.api_keys)} 個 Key")
+        print(f"載入了 {len(self.api_keys)} 個 Key")
         
     def get_response(self, prompt):
         max_retries = 3
@@ -31,7 +29,7 @@ class GeminiAI:
                 # 1. 處理 429 使用限制錯誤
                 if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                     if i < max_retries - 1:
-                        logger.waring(f"⚠️ Key 額度用盡，正在嘗試換一個 Key 重試 ({i+1}/{max_retries})...")
+                        print(f"⚠️ Key 額度用盡，正在嘗試換一個 Key 重試 ({i+1}/{max_retries})...")
                         time.sleep(2) # 等待一下再試
                         continue
                     else:
@@ -47,7 +45,7 @@ class GeminiAI:
 
                 # 3. 其他未知錯誤 (只顯示簡短訊息，不顯示完整日誌)
                 else:
-                    logger.error(f"DEBUG - 未知錯誤內容: {e}") # 留在後台自己看
+                    print(f"DEBUG - 未知錯誤內容: {e}") # 留在後台自己看
                     return "❌ 發生了未知的錯誤，請聯絡開發者 @gdnb 檢查日誌。"
         
         return "😵 嘗試多次後依然失敗，請檢查網路或 API 狀態。"
