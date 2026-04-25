@@ -210,8 +210,14 @@ class CandidateGuess(commands.Cog):
                 quiz_data["winners"] = []
             
             user_id = message.author.id
+
+            # 2. 執行刪除與回覆
+            try:
+                await message.delete()
+            except discord.Forbidden:
+                pass 
             
-            # 檢查這位使用者今天是否已經答對過 (避免重複刷榜)
+            # 3. 檢查這位使用者今天是否已經答對過 (避免重複刷榜)
             if user_id not in quiz_data["winners"]:
                 quiz_data["winners"].append(user_id)
                 # 存回 JSON 檔案
@@ -221,12 +227,6 @@ class CandidateGuess(commands.Cog):
             
             # 獲取他是第幾個答對的
             rank = quiz_data["winners"].index(user_id) + 1
-
-            # 2. 執行刪除與回覆
-            try:
-                await message.delete()
-            except discord.Forbidden:
-                pass 
 
             # 使用簡單的文字回覆搭配 Markdown 語法
             reply_text = (
