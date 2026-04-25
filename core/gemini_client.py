@@ -1,6 +1,6 @@
 import time
 from google import genai
-from google.genai import errors # type: ignore
+from google.genai import errors
 import random
 
 class GeminiAI:
