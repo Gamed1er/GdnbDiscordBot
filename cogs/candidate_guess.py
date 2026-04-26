@@ -87,12 +87,12 @@ class CandidateGuess(commands.Cog):
         
         user_prompt = f"請針對「{ans_name}」這個人物出題，領域類別為「{area_name}」。"
 
-        # print(user_prompt)
+        print("user_prompt = " +  user_prompt)
         
         # 4. 呼叫 API
         raw_response = self.ai.get_response(SYSTEM_PROMPT + user_prompt)
 
-        # print(raw_response)
+        print("raw_response = " + raw_response)
         
         try:
             # 使用正規表達式抓取 ```json ... ``` 之間的內容，或直接抓取 { ... }
@@ -108,6 +108,8 @@ class CandidateGuess(commands.Cog):
                 # 取得昨天的答案 (如果有)
                 old_quiz = DatabaseManager.load_json(self.daily_quiz_path, {})
                 quiz_data["yesterday_ans"] = old_quiz.get("ans", "無")
+
+                quiz_data["winner"] = []
                 
                 # 儲存今日題目
                 DatabaseManager.save_json(self.daily_quiz_path, quiz_data)
@@ -126,7 +128,7 @@ class CandidateGuess(commands.Cog):
     def cog_unload(self):
         self.daily_check.cancel()
 
-    @tasks.loop(minutes=30) # 每 30 分鐘檢查一次
+    @tasks.loop(minutes=2) # 每 2 分鐘檢查一次
     async def daily_check(self):
         now = datetime.datetime.now()
         # 檢查是否為早上 6 點
@@ -134,6 +136,7 @@ class CandidateGuess(commands.Cog):
             quiz_data = DatabaseManager.load_json(self.daily_quiz_path, {})
             # 避免同一天重複發送
             if quiz_data.get("date") != str(now.date()):
+                print("Generating new Quiz....")
                 new_quiz = await self.generate_daily_quiz()
                 if new_quiz:
                     await self.broadcast_quiz(new_quiz)
@@ -173,8 +176,16 @@ class CandidateGuess(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        quiz_data = DatabaseManager.load_json(self.daily_quiz_path, {})
+        if not quiz_data:
+            return
+
         # 1. 過濾掉機器人自己、以及沒有伺服器的私訊
         if message.author.bot or not message.guild:
+            return
+        
+        user_id = message.author.id
+        if user_id in quiz_data["winners"]:
             return
 
         # 2. 檢查該頻道是否為登記的「猜謎頻道」
@@ -184,11 +195,8 @@ class CandidateGuess(commands.Cog):
         # 如果該伺服器沒登記頻道，或是發言頻道不對，直接結束
         if guild_id_str not in channels_data or channels_data[guild_id_str] != message.channel.id:
             return
+        
 
-        # 3. 讀取今日題目資料
-        quiz_data = DatabaseManager.load_json(self.daily_quiz_path, {})
-        if not quiz_data:
-            return
             
         # 檢查題目是否為今天生成的 (防止舊題目干擾)
         if quiz_data.get("date") != str(datetime.date.today()):
@@ -204,37 +212,43 @@ class CandidateGuess(commands.Cog):
 
         if user_input in possible_answers:
             # --- 答對了 ---
-            # 1. 讀取並更新答對名單
-            # 確保 quiz_data 裡有 winners 這個 key
+            # 1. 更新資料庫邏輯 (與之前相同)
             if "winners" not in quiz_data:
                 quiz_data["winners"] = []
-            
-            user_id = message.author.id
 
-            # 2. 執行刪除與回覆
+            # 2. 執行刪除原訊息
             try:
                 await message.delete()
             except discord.Forbidden:
                 pass 
+                        
+            quiz_data["winners"].append(user_id)
+            DatabaseManager.save_json(self.daily_quiz_path, quiz_data)
             
-            # 3. 檢查這位使用者今天是否已經答對過 (避免重複刷榜)
-            if user_id not in quiz_data["winners"]:
-                quiz_data["winners"].append(user_id)
-                # 存回 JSON 檔案
-                DatabaseManager.save_json(self.daily_quiz_path, quiz_data)
-            else:
-                return
-            
-            # 獲取他是第幾個答對的
             rank = quiz_data["winners"].index(user_id) + 1
 
-            # 使用簡單的文字回覆搭配 Markdown 語法
-            reply_text = (
-                f"## 🎊 恭喜 {message.author.mention} 答對今天的人物猜謎！\n"
-                f"你是第 `{rank}` 位猜對的人。"
+            # 3. 建立美化後的 Embed
+            congrats_embed = discord.Embed(
+                title="🎊 恭喜答對！",
+                description=f"## {message.author.mention} 成功解開了謎題！",
+                color=discord.Color.gold(), # 使用金色代表答對
+                timestamp=discord.utils.utcnow() # 加上時間戳記
             )
 
-            await message.channel.send(reply_text)
+            # 設定右側小頭像為答對者的頭像
+            # 使用 display_avatar 會自動處理有沒有自定義頭像的問題
+            congrats_embed.set_thumbnail(url=message.author.display_avatar.url)
+
+            # 加入排名資訊
+            congrats_embed.add_field(
+                name="🏆 達成順序", 
+                value=f"你是今天第 `{rank}` 位猜對的人", 
+                inline=True
+            )
+
+            congrats_embed.set_footer(text=f"Developed by gdnb")
+
+            await message.channel.send(embed=congrats_embed)
             
             # 3. 給予經驗值
             level_data = DatabaseManager.load_json(self.data_dir + str(message.guild.id) + ".json")
