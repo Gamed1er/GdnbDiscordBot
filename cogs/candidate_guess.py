@@ -131,7 +131,7 @@ class CandidateGuess(commands.Cog):
     # 設定每日十二點執行一次函式
 
     tz = datetime.timezone(datetime.timedelta(hours = 8))
-    run_time = datetime.time(hour = 23, minute = 35, tzinfo = tz)
+    run_time = datetime.time(hour = 6, minute = 0, tzinfo = tz)
 
     @tasks.loop(time = run_time)
     async def daily_check(self):
