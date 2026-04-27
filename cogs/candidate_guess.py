@@ -102,14 +102,13 @@ class CandidateGuess(commands.Cog):
                 quiz_data = json.loads(clean_json)
 
                 # 嘗試解析 JSON
-                quiz_data = json.loads(raw_response)
                 quiz_data["date"] = str(datetime.date.today())
                 
                 # 取得昨天的答案 (如果有)
                 old_quiz = DatabaseManager.load_json(self.daily_quiz_path, {})
                 quiz_data["yesterday_ans"] = old_quiz.get("ans", "無")
 
-                quiz_data["winner"] = []
+                quiz_data["winners"] = []
                 
                 # 儲存今日題目
                 DatabaseManager.save_json(self.daily_quiz_path, quiz_data)
@@ -128,18 +127,18 @@ class CandidateGuess(commands.Cog):
     def cog_unload(self):
         self.daily_check.cancel()
 
-    @tasks.loop(minutes=2) # 每 2 分鐘檢查一次
+    # 臺灣時區 UTC+8
+    # 設定每日十二點執行一次函式
+
+    tz = datetime.timezone(datetime.timedelta(hours = 8))
+    run_time = datetime.time(hour = 23, minute = 35, tzinfo = tz)
+
+    @tasks.loop(time = run_time)
     async def daily_check(self):
-        now = datetime.datetime.now()
-        # 檢查是否為早上 6 點
-        if now.hour == 6:
-            quiz_data = DatabaseManager.load_json(self.daily_quiz_path, {})
-            # 避免同一天重複發送
-            if quiz_data.get("date") != str(now.date()):
-                print("Generating new Quiz....")
-                new_quiz = await self.generate_daily_quiz()
-                if new_quiz:
-                    await self.broadcast_quiz(new_quiz)
+        print("Generating new Quiz....")
+        new_quiz = await self.generate_daily_quiz()
+        if new_quiz:
+            await self.broadcast_quiz(new_quiz)
 
     async def broadcast_quiz(self, quiz):
         # 讀取所有註冊過的頻道
@@ -185,6 +184,8 @@ class CandidateGuess(commands.Cog):
             return
         
         user_id = message.author.id
+        if "winners" not in quiz_data:
+            quiz_data["winners"] = []
         if user_id in quiz_data["winners"]:
             return
 
@@ -195,8 +196,6 @@ class CandidateGuess(commands.Cog):
         # 如果該伺服器沒登記頻道，或是發言頻道不對，直接結束
         if guild_id_str not in channels_data or channels_data[guild_id_str] != message.channel.id:
             return
-        
-
             
         # 檢查題目是否為今天生成的 (防止舊題目干擾)
         if quiz_data.get("date") != str(datetime.date.today()):
