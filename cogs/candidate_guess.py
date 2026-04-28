@@ -273,15 +273,10 @@ class CandidateGuess(commands.Cog):
                 
         else:
             # --- 答錯了 ---
-            # 為了避免一般聊天也被加 X，我們設定一個門檻：
-            # 只有當字數小於 10 個字，且該頻道是「猜謎頻道」時才反應
-            if len(message.content) <= 10:
-                # 這裡不需要加 await，因為加反應失敗不應該影響主程式
-                try:
-                    print(5)
-                    await message.add_reaction("❌")
-                except:
-                    pass
+            try:
+                await message.add_reaction("❌")
+            except:
+                pass
 
 
 # 這行是關鍵，main.py 載入時會執行它
