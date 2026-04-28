@@ -175,31 +175,34 @@ class CandidateGuess(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        print(0)
+
+        # 如果該伺服器沒登記頻道，或是發言頻道不對，直接結束
+        guild_id_str = str(message.guild.id)
+        channels_data = DatabaseManager.load_json(self.channel_path, {})
+        if guild_id_str not in channels_data or channels_data[guild_id_str] != message.channel.id:
+            return
+        
         quiz_data = DatabaseManager.load_json(self.daily_quiz_path, {})
         if not quiz_data:
             return
 
+        print(1)
         # 1. 過濾掉機器人自己、以及沒有伺服器的私訊
         if message.author.bot or not message.guild:
             return
         
+        print(2)
         user_id = message.author.id
         if "winners" not in quiz_data:
             quiz_data["winners"] = []
         if user_id in quiz_data["winners"]:
+            print(quiz_data)
             return
 
         # 2. 檢查該頻道是否為登記的「猜謎頻道」
-        guild_id_str = str(message.guild.id)
-        channels_data = DatabaseManager.load_json(self.channel_path, {})
-        
-        # 如果該伺服器沒登記頻道，或是發言頻道不對，直接結束
-        if guild_id_str not in channels_data or channels_data[guild_id_str] != message.channel.id:
-            return
-            
-        # 檢查題目是否為今天生成的 (防止舊題目干擾)
-        if quiz_data.get("date") != str(datetime.date.today()):
-            return
+
+        print(3)
 
         # 4. 比對答案
         # 處理使用者輸入：去空白、轉小寫
@@ -288,6 +291,7 @@ class CandidateGuess(commands.Cog):
             if len(message.content) <= 10:
                 # 這裡不需要加 await，因為加反應失敗不應該影響主程式
                 try:
+                    print(5)
                     await message.add_reaction("❌")
                 except:
                     pass
