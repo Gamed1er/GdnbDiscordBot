@@ -7,12 +7,6 @@ from discord.ext import tasks
 from core.data_base_manager import DatabaseManager
 from core.gemini_client import GeminiAI
 from core.level_manager import LevelManager
-
-class CandidateGuess(commands.Cog):
-
-    import discord
-from discord.ext import commands
-from core.data_base_manager import DatabaseManager
 import random
 import json
 import datetime
@@ -175,7 +169,6 @@ class CandidateGuess(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        print(0)
 
         # 如果該伺服器沒登記頻道，或是發言頻道不對，直接結束
         guild_id_str = str(message.guild.id)
@@ -187,22 +180,16 @@ class CandidateGuess(commands.Cog):
         if not quiz_data:
             return
 
-        print(1)
         # 1. 過濾掉機器人自己、以及沒有伺服器的私訊
         if message.author.bot or not message.guild:
             return
         
-        print(2)
         user_id = message.author.id
         if "winners" not in quiz_data:
             quiz_data["winners"] = []
         if user_id in quiz_data["winners"]:
             print(quiz_data)
             return
-
-        # 2. 檢查該頻道是否為登記的「猜謎頻道」
-
-        print(3)
 
         # 4. 比對答案
         # 處理使用者輸入：去空白、轉小寫
