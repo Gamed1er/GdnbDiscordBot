@@ -1,3 +1,4 @@
+import asyncio
 import re
 import time
 
@@ -127,12 +128,26 @@ class CandidateGuess(commands.Cog):
     tz = datetime.timezone(datetime.timedelta(hours = 8))
     run_time = datetime.time(hour = 6, minute = 0, tzinfo = tz)
 
-    @tasks.loop(time = run_time)
+    @tasks.loop(time=run_time)
     async def daily_check(self):
-        print("Generating new Quiz....")
-        new_quiz = await self.generate_daily_quiz()
-        if new_quiz:
-            await self.broadcast_quiz(new_quiz)
+        max_attempts = 12  # 最多嘗試 12 次 (5分鐘一次，剛好一小時)
+        retry_interval = 300  # 每次失敗等待 300 秒 (5 分鐘)
+
+        print(f"[{datetime.datetime.now()}] 觸發每日定時任務：準備生成新題目...")
+
+        for attempt in range(1, max_attempts + 1):
+            new_quiz = await self.generate_daily_quiz()
+            
+            if new_quiz:
+                print(f"✅ 第 {attempt} 次嘗試成功！正在廣播題目...")
+                await self.broadcast_quiz(new_quiz)
+                break  # 成功生成並廣播後，跳出重試迴圈
+            else:
+                if attempt < max_attempts:
+                    print(f"⚠️ 第 {attempt} 次生成失敗，將於 {retry_interval/60} 分鐘後重試...")
+                    await asyncio.sleep(retry_interval)
+                else:
+                    print(f"❌ 已達到最大重試次數 ({max_attempts})，今日題目生成失敗。")
 
     async def broadcast_quiz(self, quiz):
         # 讀取所有註冊過的頻道
