@@ -53,34 +53,36 @@ class CandidateGuess(commands.Cog):
         category_info = pool_data[category_key]
         ans_name = random.choice(category_info['pool'])
         area_name = category_info['name']
+        area_description = category_info['description']
 
         # 3. 準備給 Gemini 的 Prompt
         SYSTEM_PROMPT = """
         你現在是一個 Discord 伺服器的專業的 Discord 猜謎遊戲出題者。
-        請針對指定的人物或對象生成 JSON 格式的題目資料。
+        請針對指定的人物、物品或事件等生成 JSON 格式的題目資料。
         
         【出題規則】
         1. 產出 3 個提示 (hint)。
-        2. 第 1 句提示必須說一些這個人做過的事情或事蹟，例如 希特勒 可以說 「他曾經參與二次世界大戰」
-           第 2 個和第 3 個提示可以說該人物的個性，或著可以說該人物做的「特別的事」，例如 徐志摩 可以說 「他墜機了」
+        2. 第 1 句提示必須說出一個事實，並且跟該人物相關。例如 希特勒 可以說 「他參與二次世界大戰」、解嚴可以說「這件事發生於 1987 年」 
+           第 2 個和第 3 個提示可以說該人物的個性或物品的特性，或著可以說該人物做的「特別的事」，例如 徐志摩 可以說 「他墜機了」
            提示可以具有「誤導性」：利用該人物與其他知名人物重疊的真實特質來誘導玩家往錯誤方向猜測。
            提示詞可以帶有一點幽默感
         3. 提示詞是陳述句，但是盡量簡短，不超過 20 字。例如 孔子 的提示詞可能有「他力氣非常大，可以徒手舉起城門」
-        4. maybe_ans 應包含所有可能的正確稱呼（如別名、縮寫、正式名稱），如果是外國人，附上英文或其他慣用語言名稱的全名或縮寫 ( 例如 林納斯·托瓦茲 可以猜 linus torvalds 或 linux，竈門炭治郎 可以猜 かまどたんじろう )。
+        4. maybe_ans 應包含所有可能的正確稱呼（如別名、縮寫、正式名稱），如果是外國人，附上英文或其他慣用語言名稱的姓名 ( 例如 林納斯·托瓦茲 可以猜 linus torvalds 或 linux，竈門炭治郎 可以猜 かまどたんじろう，動態規劃可以猜做 DP)
+        5. 本伺服器以繁體中文為主，所以如果出現從英文翻譯成中文有兩種以上不同翻譯名稱的情況，需要全部列在 maybe_ans 上 ( 例如 John Tyndall 被翻譯成 廷得耳 或 廷得爾 )
         
         【輸出格式限制】
         請務必嚴格遵守以下格式回覆，不要包含任何開場白、結尾或 Markdown 標記以及其他語句，回覆內容必須是純 Json 檔案，格式如下：
         {
           "area": "領域名稱",
-          "hint": ["提示1", "提示2", "提示3"],
+          "hint": ["提示1", "提示2", "提示3....."],
           "ans": "標準答案",
-          "maybe_ans": ["別名1", "別名2"]
+          "maybe_ans": ["別名1", "別名2", "別名3....."]
         }
 
         【今日的題目與類別】
         """
         
-        user_prompt = f"請針對「{ans_name}」這個人物出題，領域類別為「{area_name}」。"
+        user_prompt = f"請針對「{ans_name}」這個主題出題，領域類別為「{area_name}」，領域說明為「{area_description}」。"
 
         print("user_prompt = " +  user_prompt)
         
@@ -207,14 +209,25 @@ class CandidateGuess(commands.Cog):
             return
 
         # 4. 比對答案
-        # 處理使用者輸入：去空白、轉小寫
+        # 處理使用者輸入：去除頭尾空白並轉小寫
         user_input = message.content.strip().lower()
         
+        # 條件 1：使用者輸入不能超過 30 個字元
+        if len(user_input) > 30:
+            return
+
         # 準備正確答案清單
         standard_ans = quiz_data["ans"].lower()
         possible_answers = [standard_ans] + [a.lower() for a in quiz_data.get("maybe_ans", [])]
 
-        if user_input in possible_answers:
+        # 條件 2：檢查使用者的輸入是否「包含」任何一個正確答案
+        is_correct = False
+        for correct_choice in possible_answers:
+            if correct_choice in user_input:
+                is_correct = True
+                break
+
+        if is_correct:
             # --- 答對了 ---
             # 1. 更新資料庫邏輯 (與之前相同)
             if "winners" not in quiz_data:
