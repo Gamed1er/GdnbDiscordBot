@@ -25,11 +25,18 @@ class MinecraftRater(commands.Cog):
             if isinstance(resolved_msg, discord.Message):
                 attachments = resolved_msg.attachments
 
-        # 過濾出圖片附件
-        image_attachments = [
-            att for att in attachments 
-            if att.content_type and att.content_type.startswith("image/")
-        ]
+        # 過濾出圖片附件 (支援 png, jpg, jpeg, webp 等格式)
+        image_attachments = []
+        image_extensions = (".png", ".jpg", ".jpeg", ".webp", ".gif")
+        for att in attachments:
+            is_image = False
+            if att.content_type and att.content_type.startswith("image/"):
+                is_image = True
+            elif att.filename and att.filename.lower().endswith(image_extensions):
+                is_image = True
+            
+            if is_image:
+                image_attachments.append(att)
 
         if not image_attachments:
             await ctx.reply("⚠️ 請在上傳建築圖片的同時輸入此指令，或是回覆包含圖片的訊息！")
@@ -52,9 +59,27 @@ class MinecraftRater(commands.Cog):
                 contents = []
                 for att in image_attachments:
                     img_bytes = await att.read()
+                    
+                    # 決定正確的 MIME 類型 (若 content_type 為空，則根據副檔名判定)
+                    mime_type = att.content_type
+                    if not mime_type and att.filename:
+                        filename_lower = att.filename.lower()
+                        if filename_lower.endswith((".jpg", ".jpeg")):
+                            mime_type = "image/jpeg"
+                        elif filename_lower.endswith(".png"):
+                            mime_type = "image/png"
+                        elif filename_lower.endswith(".webp"):
+                            mime_type = "image/webp"
+                        elif filename_lower.endswith(".gif"):
+                            mime_type = "image/gif"
+                    
+                    # 如果仍無法判定，預設為 image/png
+                    if not mime_type:
+                        mime_type = "image/png"
+
                     part = types.Part.from_bytes(
                         data=img_bytes,
-                        mime_type=att.content_type
+                        mime_type=mime_type
                     )
                     contents.append(part)
 
