@@ -1,14 +1,13 @@
 import discord
-import json, os, datetime  # 修改：需要 datetime 來設定禁言時間
+import datetime
 from discord.ext import commands
+from core.data_base_manager import DatabaseManager
 
 
 class NoPolitics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # 使用 encoding="utf-8" 避免樹莓派讀取中文 json 出現亂碼
-        with open("data/banned_politics_words.json", "r", encoding="utf-8") as json_file:
-            self.ban_words = json.load(json_file)
+        self.ban_words = DatabaseManager.load_json("data/banned_politics_words.json", [])
 
     @commands.Cog.listener()
     async def on_message(self, message):

@@ -1,11 +1,11 @@
 import discord
 import os
-import json
 import asyncio
 from discord.ext import commands
 from discord import app_commands
 from dotenv import load_dotenv
 from core.map_view import MapView
+from core.data_base_manager import DatabaseManager
 
 load_dotenv() # 載入 .env 檔案中的變數
 
@@ -29,11 +29,8 @@ class GdnbBot(commands.Bot):
         await self.tree.sync() 
         print(f'已同步斜線指令。機器人 {self.user} 已上線！')
 
-        # 修正 JSON 讀取
         try:
-            with open("data/announcement_register_channel.json", "r", encoding="utf-8") as f:
-                registered = json.load(f)
-            
+            registered = DatabaseManager.load_json("data/announcement_register_channel.json", {})
             for guild in registered.values():
                 for channel_id in guild:
                     channel = self.get_channel(channel_id)
@@ -52,10 +49,7 @@ class GdnbBot(commands.Bot):
     async def close(self):
         print("機器人正在關閉，發送下線通知...")
         try:
-            # 修正 JSON 讀取
-            with open("data/announcement_register_channel.json", "r", encoding="utf-8") as f:
-                registered = json.load(f)
-            
+            registered = DatabaseManager.load_json("data/announcement_register_channel.json", {})
             for guild in registered.values():
                 for channel_id in guild:
                     channel = self.get_channel(channel_id)

@@ -4,24 +4,31 @@ import os
 class DatabaseManager:
     @staticmethod
     def save_json(path, data):
-        # 確保目錄存在
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        dir_name = os.path.dirname(path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
     @staticmethod
-    def load_json(path, default_factory={}):
+    def load_json(path, default=None):
         """
-        讀取 JSON，如果檔案不存在或出錯，回傳預設值 (預設為空字典)
+        讀取 JSON，如果檔案不存在、為空或損毀，自動以預設值重建並回傳。
         """
+        if default is None:
+            default = {}
+
         if not os.path.exists(path):
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(default_factory, f, indent=4, ensure_ascii=False)
-            return default_factory
-        
+            DatabaseManager.save_json(path, default)
+            return default
+
         try:
             with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                content = f.read().strip()
+            if not content:
+                DatabaseManager.save_json(path, default)
+                return default
+            return json.loads(content)
         except (json.JSONDecodeError, ValueError):
-            # 檔案損毀時的處理
-            return default_factory
+            DatabaseManager.save_json(path, default)
+            return default

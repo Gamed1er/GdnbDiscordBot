@@ -277,17 +277,14 @@ class CandidateGuess(commands.Cog):
 
             d_level = LevelManager.check_level_up(user["xp"], xp_gain)
             if d_level > 0 and user["announcement"]:
-                with open("data/announcement_register_channel.json", "r", encoding="utf-8") as f:
-                    data = json.load(f)
-
-                for channel_id in data[str(message.guild.id)]:
+                announcement_data = DatabaseManager.load_json("data/announcement_register_channel.json", {})
+                for channel_id in announcement_data.get(str(message.guild.id), []):
                     channel = self.bot.get_channel(channel_id)
                     if channel is None:
                         try:
-                            channel = await self.fetch_channel(channel_id)
+                            channel = await self.bot.fetch_channel(channel_id)
                         except:
                             continue
-                    
                     if channel:
                         await channel.send(f"恭喜 {message.author.mention} 已提升至等級 {user['level'] + d_level}")
 

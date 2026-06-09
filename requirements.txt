@@ -1,3 +1,8 @@
 discord.py
 google-genai
 python-dotenv
+
+discord.py[voice]>=2.4.0
+yt-dlp
+PyNaCl
+davey
