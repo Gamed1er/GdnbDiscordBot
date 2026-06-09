@@ -1,8 +1,8 @@
 import discord
 import os
 from discord.ext import commands
-from core.gemini_client import GeminiAI
 from core.data_base_manager import DatabaseManager
+from core.gemini_client import GeminiAI
 
 class AIChat(commands.Cog):
     def __init__(self, bot, ai_client):
@@ -10,17 +10,14 @@ class AIChat(commands.Cog):
         self.ai = ai_client
         self.data_path = "data/ai_register_channel.json"
         self.memory_dir = "data/ai_memory/"
-        os.makedirs(self.memory_dir, exist_ok=True) # 確保記憶資料夾存在
+        os.makedirs(self.memory_dir, exist_ok=True)
 
     def get_user_memory(self, user_id):
-        """取得特定使用者的記憶內容"""
         path = f"{self.memory_dir}{user_id}.json"
-        # 如果檔案不存在，回傳空字串
         data = DatabaseManager.load_json(path, {"memory": ""})
         return data.get("memory", "")
 
     def save_user_memory(self, user_id, memory_text):
-        """儲存使用者的記憶內容"""
         path = f"{self.memory_dir}{user_id}.json"
         DatabaseManager.save_json(path, {"memory": memory_text})
 
@@ -29,66 +26,82 @@ class AIChat(commands.Cog):
         if message.author.bot or not message.guild: return
         if message.content.startswith(self.bot.command_prefix) or message.content.startswith("~"): return
 
-        # 檢查頻道是否登記 (這裡假設 ai_register_channel.json 存的是一個 list)
+        # 檢查頻道是否登記
         registered = DatabaseManager.load_json(self.data_path, [])
         if message.channel.id not in registered: return
         
         async with message.channel.typing():
-            # 1. 讀取該使用者的舊記憶
             user_id = str(message.author.id)
             old_memory = self.get_user_memory(user_id)
             
-            # 2. 注入記憶到 Prompt
+            # 建立一個清單來儲存所有要發送給 Gemini 的檔案資訊
+            files_to_send = []
+            
+            if message.attachments:
+                for attachment in message.attachments:
+                    if attachment.content_type:
+                        try:
+                            # 異步讀取每一個檔案的二進位資料
+                            f_bytes = await attachment.read()
+                            files_to_send.append({
+                                "bytes": f_bytes,
+                                "mime_type": attachment.content_type
+                            })
+                            print(f"成功加載附件: {attachment.filename} ({attachment.content_type})")
+                        except Exception as e:
+                            print(f"⚠️ 讀取附件 {attachment.filename} 失敗: {e}")
 
+            # 3. 注入記憶到 Prompt
             SYSTEM_PROMPT = f"""
-            你現在是一個 Discord 伺服器的友善 AI 助手。
-            你的個性：活潑、幽默、豪邁且不拘小節、樂於助人。
-            【目前的記憶】
-            關於這位使用者 {message.author.display_name}，你目前的記憶如下：
-            {old_memory if old_memory else "目前沒有關於這位使用者的特定記憶。"}
-            對話規則：
-            1. 請使用繁體中文回覆，除非使用者有要求用其他語言，語氣要像在 Discord 聊天一樣自然，可以使用 Emoji。
-            2. 保持簡潔，不要發送長篇大論，除非使用者要求詳細解釋。
-            3. 避免在每句話都重複自我介紹。
-            4. 禁止 Latex，因為那個字體在 Discord 無法顯示，請使用純文字表示。
-            5. 如果你想要 mention 某個人，Discord 的語法是 `<@使用者ID>`，例如：如果使用者ID是 12345，你想打招呼，請寫 '你好啊 <@12345>！'
-            6. 使用 markdown 語法回答，Discord 支援 markdown 語法
-            7. 如果使用者有問你 Minecraft 技術相關的問題，例如資料包、資源包等，請去查詢當前 Minecraft 最新版本的語法再來通知
-            8. **回覆格式限制**：
-               請務必嚴格遵守此格式回覆：<給使用者的話>【@】<需要記住的內容>。
-               - 前段會直接回覆給使用者。
-               - 後段是你要留給未來的自己看的筆記（不超過 300 字），請簡述這次對話中值得記住的重點（如對方的喜好、剛聊過的話題），也可以在原有的記憶上做延伸。
+                你現在是一個 Discord 伺服器的友善 AI 助手。
+                你的個性：活潑、幽默、豪邁且不拘小節、樂於助人。
+                【目前的記憶】
+                關於這位使用者 {message.author.display_name}，你目前的記憶如下：
+                {old_memory if old_memory else "目前沒有關於核心使用者的特定記憶。"}
+                【對話規則】
+                1. 請使用繁體中文回覆，語氣要像在 Discord 聊天一樣自然，可以使用 Emoji。
+                2. 保持簡潔，不要發送長篇大論，除非使用者要求詳細解釋。
+                3. 禁止 Latex，請使用純文字表示。
+                4. 如果你想要 mention 某個人，Discord 的語法是 `<@使用者ID>`。
+                5. 使用 markdown 語法回答。
+                6. 如果使用者問你 Minecraft 技術相關的問題（資料包、資源包語法等），請結合使用者提供的一張或多張檔案/圖片內容一起交叉比對分析。
+                7. **回覆格式限制**：
+                請務必嚴格遵守此格式回覆：<給使用者的話>【@】<需要記住的內容>。
             """
 
+            # 提示文字更新
+            notice_text = f"（使用者已隨訊息附帶了 {len(files_to_send)} 個檔案/圖片，請結合所有檔案內容一起辨識分析）\n" if files_to_send else ""
             prompt = (
                 f"使用者名稱: {message.author.display_name}\n"
                 f"使用者ID: {user_id}\n"
-                f"訊息內容: {message.content}"
+                f"訊息內容: {notice_text}{message.content}"
             )
             
-            response = self.ai.get_response(SYSTEM_PROMPT + prompt)
+            # 呼叫 Gemini（傳入包含多檔案的清單）
+            response = self.ai.get_response(
+                prompt=SYSTEM_PROMPT + prompt, 
+                files_list=files_to_send if files_to_send else None
+            )
             
             if response and "【@】" in response:
-                # 3. 解析回覆：拆分「對話」與「記憶」
                 parts = response.split("【@】", 1)
                 reply_content = parts[0].strip()
                 new_memory = parts[1].strip()
 
-                # 4. 儲存新記憶
                 self.save_user_memory(user_id, new_memory)
 
-                # 5. 發送回覆（處理長度限制）
                 if len(reply_content) > 2000:
-                    reply_content = reply_content[:1900] + "..." # 修正截斷邏輯
+                    reply_content = reply_content[:1900] + "..."
                 await message.reply(reply_content)
                 
             elif response:
-                # 如果 AI 沒按格式回覆，直接整段發出以免漏掉訊息
                 await message.reply(response[:2000])
             else:
                 await message.reply("⚠️ AI 目前無法回應。")
 
 async def setup(bot):
     import os
-    ai_client = GeminiAI(os.getenv(f"GEMINI_API_KEY").split(","))
+    keys_str = os.getenv("GEMINI_API_KEY")
+    api_keys = keys_str.split(",") if keys_str else []
+    ai_client = GeminiAI(api_keys)
     await bot.add_cog(AIChat(bot, ai_client))
