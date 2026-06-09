@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import re
 from google.genai import types
 from core.gemini_client import GeminiAI
@@ -9,18 +10,22 @@ class MinecraftRater(commands.Cog):
         self.bot = bot
         self.ai = ai_client
 
-    @commands.command(name="rate_build", aliases=["rate", "score", "評分"])
+    @commands.hybrid_command(name="rate_build", aliases=["rate", "score", "評分"])
     @commands.cooldown(1, 15, commands.BucketType.user)
-    async def rate_build(self, ctx):
+    @app_commands.describe(image="上傳你想要 AI 評分的 Minecraft 建築圖片 (選填，若未提供則會讀取回覆的圖片)")
+    async def rate_build(self, ctx, image: discord.Attachment = None):
         """上傳自己或別人的 Minecraft 建築圖片，讓 AI 幫你評分！"""
         # 1. 取得圖片附件
         attachments = []
         
+        # 優先使用參數傳入的圖片
+        if image:
+            attachments.append(image)
         # 檢查當前訊息是否有附件
-        if ctx.message.attachments:
+        elif ctx.message and ctx.message.attachments:
             attachments = ctx.message.attachments
         # 檢查是否是回覆訊息，且被回覆的訊息是否有附件
-        elif ctx.message.reference and ctx.message.reference.resolved:
+        elif ctx.message and ctx.message.reference and ctx.message.reference.resolved:
             resolved_msg = ctx.message.reference.resolved
             if isinstance(resolved_msg, discord.Message):
                 attachments = resolved_msg.attachments
@@ -85,37 +90,37 @@ class MinecraftRater(commands.Cog):
 
                 # 4. 定義系統提示詞與評估標準
                 SYSTEM_PROMPT = """
-你現在是一位專業的 Minecraft 建築評審與設計大師。
-請針對使用者上傳的 Minecraft 建築圖片進行詳細、客觀且具建設性的評估與評分。
+                你現在是一位專業的 Minecraft 建築評審與設計大師。
+                請針對使用者上傳的 Minecraft 建築圖片進行詳細、客觀且具建設性的評估與評分。
 
-請以下列格式進行回覆，且使用繁體中文（台灣習慣用語）：
+                請以下列格式進行回覆，且使用繁體中文（台灣習慣用語）：
 
-## 📊 評分：**[總分] / 100**
+                ## 📊 評分：**[總分] / 100**
 
-### 📐 細項評分
-* **外觀與造型 (Shape & Structure)**: [分數] / 25
-* **色調與方塊搭配 (Color & Texturing)**: [分數] / 25
-* **細節與細緻度 (Details)**: [分數] / 25
-* **創意與整體氛圍 (Creativity & Atmosphere)**: [分數] / 25
+                ### 📐 細項評分
+                * **外觀與造型 (Shape & Structure)**: [分數] / 25
+                * **色調與方塊搭配 (Color & Texturing)**: [分數] / 25
+                * **細節與細緻度 (Details)**: [分數] / 25
+                * **創意與整體氛圍 (Creativity & Atmosphere)**: [分數] / 25
 
----
+                ---
 
-### 🌟 亮點與優點
-1. [優點一，並說明為什麼好]
-2. [優點二]
+                ### 🌟 亮點與優點
+                1. [優點一，並說明為什麼好]
+                2. [優點二]
 
-### 🛠 具體改進建議
-1. [建議一，例如可以增加什麼材質、修改什麼結構]
-2. [建議二]
+                ### 🛠 具體改進建議
+                1. [建議一，例如可以增加什麼材質、修改什麼結構]
+                2. [建議二]
 
----
-*評審總結：[用一句話總結對這個建築的印象]*
+                ---
+                *評審總結：[用一句話總結對這個建築的印象]*
 
-【注意事項】
-1. 總分必須是四個細項分數的加總（總分 = 外觀與造型 + 色調與方塊搭配 + 細節與細緻度 + 創意與整體氛圍）。
-2. 請保持專業、友善且具鼓勵性的口吻。
-3. 總分請務必用 `**[總分] / 100**` 的格式，以便程式解析。
-"""
+                【注意事項】
+                1. 總分必須是四個細項分數的加總（總分 = 外觀與造型 + 色調與方塊搭配 + 細節與細緻度 + 創意與整體氛圍）。
+                2. 請保持專業、友善且具鼓勵性的口吻。
+                3. 總分請務必用 `**[總分] / 100**` 的格式，以便程式解析。
+                """
                 # 將提示詞插到最前面
                 contents.insert(0, SYSTEM_PROMPT)
 

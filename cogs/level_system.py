@@ -1,6 +1,7 @@
 import discord
 import json, os, math, time
 from discord.ext import commands
+from discord import app_commands
 from core.level_manager import LevelManager
 from core.data_base_manager import DatabaseManager
 
@@ -70,10 +71,10 @@ class LevelSystem(commands.Cog):
         level_data[user_id] = user
         DatabaseManager.save_json(f"{self.data_dir}{message.guild.id}.json", level_data)
 
-    @commands.command(name="xp_announcement")
+    @commands.hybrid_command(name="xp_announcement")
     async def xp_announcement(self, ctx):
         """
-        使否通知使用者升級訊息
+        是否通知使用者升級訊息
         使用方法 : $xp_announcement
         """
         level_data = DatabaseManager.load_json(self.data_dir + str(ctx.guild.id) + ".json")
@@ -88,7 +89,8 @@ class LevelSystem(commands.Cog):
         level_data[ctx.author.id] = user_data
         DatabaseManager.save_json(f"{self.data_dir}{ctx.guild.id}.json", level_data)
 
-    @commands.command(name="xp")
+    @commands.hybrid_command(name="xp")
+    @app_commands.describe(target="要查詢 XP 等級的伺服器成員 (選填，預設為自己)")
     async def asking_xp(self, ctx, target: discord.Member = None):
         """
         得知使用者的 xp 等級

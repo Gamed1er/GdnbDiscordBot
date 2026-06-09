@@ -5,6 +5,7 @@ import time
 import discord
 from discord.ext import commands
 from discord.ext import tasks
+from discord import app_commands
 from core.data_base_manager import DatabaseManager
 from core.gemini_client import GeminiAI
 from core.level_manager import LevelManager
@@ -23,7 +24,7 @@ class CandidateGuess(commands.Cog):
         # 如果 self.ai 是在別的地方定義的，請確保它能被呼叫
         self.ai = ai_client 
         
-    @commands.command(name="candidate_channel_register")
+    @commands.hybrid_command(name="candidate_channel_register", description="Register or unregister this channel for the candidate guessing game.")
     @commands.has_permissions(administrator=True)
     async def announcement_channel_register(self, ctx):
         guild_id_str = str(ctx.guild.id)
@@ -173,7 +174,7 @@ class CandidateGuess(commands.Cog):
                 await channel.send(embed=embed)
 
 
-    @commands.command(name="test_quiz")
+    @commands.hybrid_command(name="test_quiz", description="Force generate a daily quiz for testing.")
     @commands.has_permissions(administrator=True)
     async def test_quiz(self, ctx):  # 必須加上 ctx
         # 你可以在這裡呼叫你寫好的生成邏輯來測試
