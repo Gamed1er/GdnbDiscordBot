@@ -26,7 +26,6 @@ class GdnbBot(commands.Bot):
 
     async def on_ready(self):
         # 原有的同步邏輯
-        self.tree.clear_commands(guild=None)
         await self.tree.sync() 
         print(f'已同步斜線指令。機器人 {self.user} 已上線！')
 

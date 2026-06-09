@@ -1,4 +1,6 @@
 from discord.ext import commands
+from discord import app_commands
+from typing import Literal
 import json, os
 from core.data_base_manager import DatabaseManager
 
@@ -6,10 +8,14 @@ class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="ext")
+    @commands.hybrid_command(name="ext")
     @commands.is_owner()
-    async def extension_operation(self, ctx, operation: str, extension: str):
-        """load/unload/reload a extension"""
+    @app_commands.describe(
+        operation="要對模組進行的操作",
+        extension="模組名稱 (例如: ai_chat)"
+    )
+    async def extension_operation(self, ctx, operation: Literal["load", "reload", "unload"], extension: str):
+        """載入、卸載或重新載入 Bot 模組 (Cog)"""
         ext_path = f"cogs.{extension}"
         try:
             if operation == "load":
@@ -25,14 +31,14 @@ class Admin(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ {e}")
 
-    @commands.command(name = "stop", description = "Close this Discord Bot")
+    @commands.hybrid_command(name = "stop", description = "Close this Discord Bot")
     @commands.is_owner()
     async def stop(self, ctx):        
         # 這裡會觸發 main.py 裡面的 self.close()
         # 進而觸發你寫的廣播下線通知邏輯
         await self.bot.close()
 
-    @commands.command(name = "ai_channel_register", description = "Let this channel can / cannot send Gemini messages.")
+    @commands.hybrid_command(name = "ai_channel_register", description = "Let this channel can / cannot send Gemini messages.")
     @commands.has_permissions(administrator = True)
     async def ai_channel_register(self, ctx):
         target_channel_id = ctx.channel.id
@@ -48,7 +54,7 @@ class Admin(commands.Cog):
 
         DatabaseManager.save_json("data/ai_register_channel.json", registered)
 
-    @commands.command(name="announcement_channel_register")
+    @commands.hybrid_command(name="announcement_channel_register", description="Register or unregister this channel for level-up announcements.")
     @commands.has_permissions(administrator=True)
     async def announcement_channel_register(self, ctx):
         target_channel_id = ctx.channel.id

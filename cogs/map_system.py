@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 from core.map_view import MapView
 from core.data_base_manager import DatabaseManager
 import os
@@ -72,7 +73,7 @@ class MapSystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="setup_map")
+    @commands.hybrid_command(name="setup_map", description="Launch the interactive wizard to publish a new map.")
     @commands.is_owner()
     async def setup_map(self, ctx):
         """啟動發布地圖的視覺化精靈"""
