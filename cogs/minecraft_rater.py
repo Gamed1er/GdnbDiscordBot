@@ -1,3 +1,6 @@
+# DEPRECATED: 此 cog 已標記為棄用，不再自動載入。
+# 若需恢復，請將 setup() 函數中的 return 移除。
+
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -14,7 +17,7 @@ class MinecraftRater(commands.Cog):
     @commands.cooldown(1, 15, commands.BucketType.user)
     @app_commands.describe(image="上傳你想要 AI 評分的 Minecraft 建築圖片 (選填，若未提供則會讀取回覆的圖片)")
     async def rate_build(self, ctx, image: discord.Attachment = None):
-        """上傳自己或別人的 Minecraft 建築圖片，讓 AI 幫你評分！"""
+        """( 已棄用功能 )"""
         # 1. 取得圖片附件
         attachments = []
         
@@ -188,6 +191,8 @@ class MinecraftRater(commands.Cog):
             await ctx.reply(f"❌ 執行指令時發生錯誤：{str(error)}")
 
 async def setup(bot):
+    # DEPRECATED: 已停用，不載入此 cog。若需恢復，請移除此 return。
+    return
     import os
     ai_client = GeminiAI(os.getenv("GEMINI_API_KEY").split(","))
     await bot.add_cog(MinecraftRater(bot, ai_client))

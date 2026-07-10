@@ -56,7 +56,7 @@ class Music(commands.Cog):
     #  指令
     # ------------------------------------------------------------------ #
 
-    @commands.command()
+    @commands.command(name="music_search", aliases=["msearch"])
     async def search(self, ctx: commands.Context, *args):
         """搜尋 YouTube 並選擇歌曲加入清單
         用法: !search <關鍵字> [數量(1~10)]
@@ -119,7 +119,7 @@ class Music(commands.Cog):
         except asyncio.TimeoutError:
             await ctx.send("⏰ 選擇超時，請重新搜尋！")
 
-    @commands.command()
+    @commands.command(name="music_add", aliases=["madd"])
     async def add(self, ctx: commands.Context, url: str):
         """直接輸入 YouTube 網址加入清單
         用法: !add <YouTube 網址>
@@ -138,7 +138,7 @@ class Music(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ 讀取失敗: {e}")
 
-    @commands.command()
+    @commands.command(name="music_play", aliases=["mplay"])
     async def play(self, ctx: commands.Context):
         state = self.manager.get_state(ctx.channel.id)
 
@@ -160,7 +160,7 @@ class Music(commands.Cog):
         state["is_playing"] = True
         await self._play_next(ctx)
 
-    @commands.command()
+    @commands.command(name="music_skip", aliases=["mskip"])
     async def skip(self, ctx: commands.Context):
         state = self.manager.get_state(ctx.channel.id)
 
@@ -180,7 +180,7 @@ class Music(commands.Cog):
             await ctx.voice_client.disconnect()
             state["is_playing"] = False
 
-    @commands.command()
+    @commands.command(name="music_stop", aliases=["musicstop"])
     async def stop(self, ctx: commands.Context):
         state = self.manager.get_state(ctx.channel.id)
 
@@ -196,7 +196,7 @@ class Music(commands.Cog):
         self.manager.clear_state(ctx.channel.id)
         await ctx.send("👋 已離開語音頻道並清空歌單")
 
-    @commands.command(name="list")
+    @commands.command(name="music_list", aliases=["mlist"])
     async def list_songs(self, ctx: commands.Context, *args):
         state = self.manager.get_state(ctx.channel.id)
 
@@ -222,7 +222,7 @@ class Music(commands.Cog):
         embed.set_footer(text="使用 !list delete (數字) 來刪除指定歌曲")
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.command(name="music_jump", aliases=["mjump"])
     async def jump(self, ctx: commands.Context, index: int):
         state = self.manager.get_state(ctx.channel.id)
 
